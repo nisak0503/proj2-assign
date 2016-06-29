@@ -9,11 +9,17 @@
 #include "db.h"
 #include "page.h"
 
+#include <list>
+
+using namespace std;
 
 #define NUMBUF 20   
 // Default number of frames, artifically small number for ease of debugging.
 
 #define HTSIZE 7
+#define a 1
+#define b 3
+
 // Hash Table size
 //You should define the necessary classes and data structures for the hash table, 
 // and the queues for LSR, MRU, etc.
@@ -27,9 +33,42 @@ enum bufErrCodes  {
 
 class Replacer;
 
+//@kasin bufDes
+class Descriptors {
+public:
+	PageId page_number;
+	int pin_count;
+	bool dirty_bit;
+
+	Descriptors()
+	{
+		page_number = INVALID_PAGE;
+		pin_count = 0;
+		dirty_bit = false;
+	}
+};
+ 
 class BufMgr {
 
 private: // fill in this area
+	class entry
+	{
+	public:
+		PageId page_number;
+		int frame_number;
+		entry(PageId pn, int fn){page_number = pn; frame_number = fn;}
+	};
+	typedef list<entry> bucket;
+	Descriptors* bufDescr;
+	int numbuf;
+	bucket hashDir[HTSIZE];
+	list<int> hated;
+	list<int> loved;
+	int calBucket(PageId page_number){return (a * page_number + b) % HTSIZE;}
+	bool insertHash(PageId page_number, int frame_number);
+	bool eraseHash(PageId page_number);
+	int findHash(PageId page_number);
+	int getFrame();
 
 public:
 
