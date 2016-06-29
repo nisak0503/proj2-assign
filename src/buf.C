@@ -209,9 +209,14 @@ Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE){
         // this routine will call DB to deallocate the page 
 Status BufMgr::freePage(PageId globalPageId){
   // put your code here
-//cerr << "_________________freePage_______________ @kasin "<<endl;
+//cerr << "_________________freePage_______________ @kasin "<<globalPageId<<endl;
 	int frame_number = findHash(globalPageId);
-	if(frame_number == -1) return FAIL;
+	if(frame_number == -1) 
+	{
+//		cerr << "freePage: findHash -> not found"<<endl;
+		return FAIL;
+	}
+	if(bufDescr[frame_number].pin_count > 0) return FAIL;
 	if(bufDescr[frame_number].dirty_bit)
 	{
 		return MINIBASE_DB->deallocate_page(globalPageId, 1);
