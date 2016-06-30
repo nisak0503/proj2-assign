@@ -29,6 +29,8 @@ BufMgr::BufMgr (int numbuf, Replacer *replacer) {
 	bufPool = new Page[numbuf]; // in C++, call gouzao function, delete
 	bufDescr = new Descriptors[numbuf];
 	this->numbuf = numbuf;
+	for(int num = 0; num < numbuf; ++num)
+		Auschwitz.push_back(num);
 }
 
 //@kasin
@@ -39,7 +41,7 @@ BufMgr::BufMgr (int numbuf, Replacer *replacer) {
         // the page
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
   // put your code here
-//	cerr << "_________________pinPage_______________ @kasin "<<endl;
+//	cerr << "_________________pinPage_______________ @kasin "<<page-bufPool<<endl;
 	int frame_number = findHash(PageId_in_a_DB);
 //	cerr << "pin: findHash -> pageId = "<<PageId_in_a_DB<<" to frame_number = "<<frame_number<<endl;
 	if(frame_number != -1) // is in buffer pool
@@ -50,8 +52,9 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
 	else
 	{
 		frame_number = getFrame();
+//		cerr << "pin: getFrame() with frame_number = "<<frame_number<<endl;
 		if(frame_number < 0)
-		{
+		{/*
 			for(int num = 0; num < numbuf; ++num)
 			{
 				if((bufDescr[num].pin_count == 0) && (bufDescr[num].dirty_bit == 0)) 
@@ -60,11 +63,13 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
 					break;
 				}
 			}
+			*/
 			if(frame_number < 0) return FAIL;
 		}
 		if(bufDescr[frame_number].dirty_bit == true)
 			if(MINIBASE_DB->write_page(bufDescr[frame_number].page_number, bufPool+frame_number) != OK)
 				return FAIL;
+
 		if(!emptyPage)
 			if(MINIBASE_DB->read_page(PageId_in_a_DB, bufPool + frame_number) != OK)
 				return FAIL;
@@ -155,7 +160,7 @@ BufMgr::~BufMgr(){
         // if pincount=0 before this call, return error.
 Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE){
   // put your code here
-//cerr << "_________________unpinPage_______________ @kasin "<<endl;
+//cerr << "_________________unpinPage_______________ @kasin page_number = "<<page_num<<endl;
 	int frame_number = findHash(page_num);
 	if(frame_number == -1) return FAIL;
 	if(bufDescr[frame_number].pin_count <= 0) return FAIL;
@@ -219,8 +224,11 @@ Status BufMgr::freePage(PageId globalPageId){
 	if(bufDescr[frame_number].pin_count > 0) return FAIL;
 	if(bufDescr[frame_number].dirty_bit)
 	{
-		return MINIBASE_DB->deallocate_page(globalPageId, 1);
+		cerr << "need to flush @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@kasin"<<endl;		
 	}
+	
+	if(MINIBASE_DB->deallocate_page(globalPageId, 1) != OK) return FAIL;
+	Auschwitz.push_back(frame_number);
   return OK;
 }
 
@@ -245,7 +253,7 @@ Status BufMgr::flushAllPages(){
 //@kasin this is about hash directory
 bool BufMgr::insertHash(PageId page_number, int frame_number)
 {
-//cerr << "_________________insertHash_______________ @kasin "<<page_number << " "<<frame_number<< endl;
+//cerr << "_________________insertHash_______________ @kasin "<<page_number << " "<<frame_number<<" total = "<<numbuf<< endl;
 	int bucket_number = calBucket(page_number);
 	if(findHash(page_number) >= 0)
 	{
@@ -293,19 +301,40 @@ int BufMgr::getFrame()
 {
 //cerr << "_________________getFrame_______________ @kasin "<<endl;
 	int frame_number;
+	if(!Auschwitz.empty())
+	{
+		list<int>::iterator it = Auschwitz.begin();
+		frame_number = *it;
+		Auschwitz.pop_front();
+		return frame_number;
+	}	
 	if(hated.empty())
 	{
 		if(loved.empty())
 		{
-			bool notAllZero = true;
+			return -1;			
+/*
+			bool hasBlank = false;
 			for(int num = 0; num < numbuf; ++num)
 			{
-				if(bufDescr[num].pin_count != 0)
+				if((bufDescr[num].pin_count == 0)&&(bufDescr[num].dirty_bit == false)&&(bufDescr[num].page_number == INVALID_PAGE))
 				{
-					notAllZero = false;
+					frame_number = num;
+					hasBlank = true;
+					break;
 				}
 			}
-			if(!notAllZero) return -1;
+			if(hasBlank)
+			{
+				cerr << "no hated, no loved, there is one blank"<<endl;
+				return frame_number;
+			}
+			else
+			{
+				cerr << "no hated, no loved, all have pages"<<endl;
+				return -1; //FAIL!
+			}
+*/	
 		}
 		else
 		{

@@ -64,6 +64,7 @@ private: // fill in this area
 	bucket hashDir[HTSIZE];
 	list<int> hated;
 	list<int> loved;
+	list<int> Auschwitz;
 	int calBucket(PageId page_number){return (a * page_number + b) % HTSIZE;}
 	bool insertHash(PageId page_number, int frame_number);
 	bool eraseHash(PageId page_number);
